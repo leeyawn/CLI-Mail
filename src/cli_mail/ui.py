@@ -123,6 +123,8 @@ def print_email(email: Email) -> None:
 
     parts = [header_table, Rule(style="dim")]
 
+    # Render as Markdown when the source is HTML (already converted to text
+    # by html2text which outputs Markdown), plain text otherwise.
     if email.body_html and not email.body_plain:
         parts.append(Markdown(body))
     else:
@@ -240,6 +242,8 @@ def print_info(message: str) -> None:
 
 
 def _format_date_short(dt: datetime) -> str:
+    """Format a date progressively: today shows time, recent shows day name,
+    same year shows month/day, older shows full date. Mirrors Gmail's style."""
     now = datetime.now(timezone.utc)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)

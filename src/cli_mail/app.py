@@ -47,6 +47,9 @@ class App:
 
         history_path = CONFIG_DIR / "history"
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        # sentence=True means the completer matches the full input, not just
+        # the last word — needed because commands start with "/" which
+        # prompt_toolkit would otherwise treat as a word boundary.
         self.session: PromptSession = PromptSession(
             history=FileHistory(str(history_path)),
             completer=WordCompleter(
@@ -144,7 +147,13 @@ class App:
         return True
 
     def _connect(self) -> bool:
-        """Connect to the IMAP server. Returns True on success."""
+        """Connect to the IMAP server. Returns True on success.
+
+        Resolves password through a three-step chain:
+        1. In-memory cache (from a previous connection in this session)
+        2. System keychain via keyring
+        3. Interactive prompt as a last resort
+        """
         account = self.ctx.account
         if account is None:
             return False
@@ -194,6 +203,8 @@ class App:
                 try:
                     command.handler(self, args)
                 except ConnectionError:
+                    # IMAP connections can drop silently after idle timeouts;
+                    # transparently reconnect and retry the command once.
                     ui.print_error("Lost connection. Reconnecting...")
                     if self._connect():
                         command.handler(self, args)
@@ -203,6 +214,8 @@ class App:
                 ui.print_error(f"Unknown command: /{cmd_name}")
                 ui.print_info("Type /help for a list of commands.")
         else:
+            # Bare input shortcuts: a number opens that email, anything else
+            # is treated as a search query for convenience.
             if user_input.isdigit():
                 self._dispatch(f"/read {user_input}")
             else:

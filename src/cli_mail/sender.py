@@ -37,6 +37,10 @@ class SMTPSender:
         msg.set_content(body)
 
         timeout = 30
+        # Port 465 uses implicit TLS (SMTP_SSL), while other ports (typically
+        # 587) use STARTTLS to upgrade a plain connection. The second ehlo()
+        # after starttls() is required by RFC 3207 — the server resets its
+        # capability list after the TLS handshake.
         if self.account.smtp_port == 465:
             with smtplib.SMTP_SSL(self.account.smtp_host, self.account.smtp_port, timeout=timeout) as server:
                 server.login(self.account.email, password)
@@ -54,6 +58,8 @@ class SMTPSender:
         if not subject.lower().startswith("re:"):
             subject = f"Re: {subject}"
 
+        # Build the References chain per RFC 5322 §3.6.4: append the original
+        # Message-ID so threaded mail clients can reconstruct the conversation.
         refs = original.references
         if original.message_id:
             refs = f"{refs} {original.message_id}".strip()

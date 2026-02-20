@@ -27,6 +27,8 @@ def load_config() -> dict:
 
 
 def save_config(config: dict) -> None:
+    # We serialize TOML manually because Python's tomllib is read-only and
+    # adding tomli-w as a dependency just for config writes isn't worth it.
     ensure_config_dir()
     lines: list[str] = []
     if "default_account" in config:
@@ -46,6 +48,7 @@ def save_config(config: dict) -> None:
 
 
 def get_account(name: str | None = None) -> AccountConfig | None:
+    """Load an account by name, falling back to the default or first available."""
     config = load_config()
     accounts = config.get("accounts", {})
     if not accounts:
@@ -88,6 +91,9 @@ def list_accounts() -> list[str]:
     return list(config.get("accounts", {}).keys())
 
 
+# Well-known provider IMAP/SMTP settings keyed by email domain.
+# ProtonMail uses localhost because it requires ProtonMail Bridge, a local
+# daemon that exposes standard IMAP/SMTP on non-standard ports.
 PROVIDER_DEFAULTS: dict[str, dict[str, str | int]] = {
     "gmail.com": {"imap_host": "imap.gmail.com", "smtp_host": "smtp.gmail.com"},
     "googlemail.com": {"imap_host": "imap.gmail.com", "smtp_host": "smtp.gmail.com"},

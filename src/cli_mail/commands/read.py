@@ -65,12 +65,15 @@ def cmd_save_attachment(app: App, args: list[str]) -> None:
         return
 
     att = attachments[idx]
+    # Path().name strips directory components to prevent path traversal
+    # attacks from malicious filenames like "../../etc/passwd".
     safe_name = Path(att.filename).name
     if not safe_name:
         safe_name = "unnamed_attachment"
     downloads = Path.home() / "Downloads"
     downloads.mkdir(parents=True, exist_ok=True)
 
+    # Avoid overwriting existing files by appending a counter
     dest = downloads / safe_name
     counter = 1
     while dest.exists():
@@ -79,6 +82,7 @@ def cmd_save_attachment(app: App, args: list[str]) -> None:
         dest = downloads / f"{stem}_{counter}{suffix}"
         counter += 1
 
+    # Final symlink-resolving check: ensure we're still inside ~/Downloads
     if dest.resolve().parent != downloads.resolve():
         ui.print_error("Invalid attachment filename.")
         return

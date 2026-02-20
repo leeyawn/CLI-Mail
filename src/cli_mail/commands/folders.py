@@ -40,6 +40,8 @@ def cmd_switch(app: App, args: list[str]) -> None:
     folder_names = [f.name for f in folders]
     display_names = {f.display_name.lower(): f.name for f in folders}
 
+    # Try matching in order: exact name, case-insensitive display name
+    # (e.g. "sent" → "Sent Mail"), then uppercase (e.g. "inbox" → "INBOX").
     target = None
     if folder_name in folder_names:
         target = folder_name

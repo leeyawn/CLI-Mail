@@ -27,6 +27,7 @@ def cmd_search(app: App, args: list[str]) -> None:
         ui.print_warning(f'No results for "{query}"')
         return
 
+    # Reuse inbox_cache so /read <n> works on search results too
     app.ctx.inbox_cache = results
     ui.print_info(f'Found {len(results)} result{"s" if len(results) != 1 else ""} for "{query}"')
     ui.print_inbox(results, page=1, total_pages=1)

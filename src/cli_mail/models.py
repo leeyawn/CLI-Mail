@@ -1,4 +1,9 @@
-"""Data models for CLI Mail."""
+"""Data models for CLI Mail.
+
+Defines the core data structures used across the application: email addresses,
+attachments, full and lightweight email representations, folders, account
+configuration, and mutable session state.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +19,8 @@ class Address:
 
     @classmethod
     def from_header(cls, header: str) -> Address:
+        """Parse an RFC 5322 address header like '"John Doe" <john@example.com>'.
+        Falls back to the local part of the email as the display name."""
         name, email = parseaddr(header)
         return cls(name=name or email.split("@")[0], email=email)
 
@@ -61,6 +68,7 @@ class Email:
 
     @property
     def is_unread(self) -> bool:
+        # IMAP tracks "read" as the presence of \Seen, so unread = absence
         return "\\Seen" not in self.flags
 
     @property
@@ -69,6 +77,7 @@ class Email:
 
     @property
     def body(self) -> str:
+        """Prefer plain text; fall back to HTML (already converted by parser)."""
         return self.body_plain or self.body_html
 
 
@@ -119,6 +128,8 @@ class AccountConfig:
     def __post_init__(self) -> None:
         if not self.name:
             self.name = self.email.split("@")[0]
+        # Most providers follow the imap.X / smtp.X naming convention, so
+        # we can derive a reasonable default when the user doesn't specify one.
         if not self.smtp_host and self.imap_host:
             self.smtp_host = self.imap_host.replace("imap", "smtp", 1)
 

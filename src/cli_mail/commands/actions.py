@@ -81,6 +81,8 @@ def cmd_archive(app: App, args: list[str]) -> None:
     if uid is None:
         return
 
+    # Archive folder names vary by provider. We probe in priority order:
+    # Gmail uses "[Gmail]/All Mail", while most others use "Archive".
     archive_folders = ["[Gmail]/All Mail", "Archive", "Archives"]
     target = None
 

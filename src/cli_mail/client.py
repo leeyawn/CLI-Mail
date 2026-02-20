@@ -1,4 +1,10 @@
-"""IMAP client — handles connection, folder operations, and email fetching."""
+"""IMAP client — handles connection, folder operations, and email fetching.
+
+Wraps Python's imaplib to provide a higher-level interface for the operations
+CLI Mail needs: listing folders, fetching headers/emails, searching, and
+manipulating flags. All UID-based operations use the IMAP UID command to avoid
+issues with sequence number reuse across sessions.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +14,11 @@ import re
 from cli_mail.models import AccountConfig, Email, EmailHeader, Folder
 from cli_mail.parser import parse_email, parse_header
 
+# Parses IMAP LIST responses, e.g.: (\HasNoChildren) "/" "INBOX"
 _LIST_PATTERN = re.compile(
     r'\((?P<flags>[^)]*)\)\s+"(?P<delim>[^"]*)"\s+"?(?P<name>[^"]*)"?'
 )
+# Parses STATUS responses, e.g.: "INBOX" (MESSAGES 42 UNSEEN 3)
 _STATUS_PATTERN = re.compile(r"\(MESSAGES\s+(\d+)\s+UNSEEN\s+(\d+)\)")
 
 
@@ -86,15 +94,20 @@ class IMAPClient:
         if total == 0:
             return []
 
+        # IMAP sequence numbers are 1-based with newest messages at the highest
+        # numbers. We compute the range from the end to get the most recent ones.
         start = max(1, total - offset - limit + 1)
         end = max(1, total - offset)
         if start > end:
             return []
 
+        # BODY.PEEK avoids marking messages as \Seen
         status, data = self.conn.fetch(f"{start}:{end}", "(UID FLAGS BODY.PEEK[HEADER])")
         if status != "OK":
             return []
 
+        # imaplib returns FETCH responses as a flat list alternating between
+        # (metadata_bytes, payload_bytes) tuples and closing-paren bytes.
         headers: list[EmailHeader] = []
         i = 0
         while i < len(data):
@@ -133,11 +146,14 @@ class IMAPClient:
         self.select_folder(folder)
 
         sanitized = query.replace("\\", "\\\\").replace('"', '\\"')
+        # IMAP SEARCH doesn't support full-text; OR across SUBJECT and FROM
+        # is the most useful server-side filter we can do.
         criteria = f'(OR (SUBJECT "{sanitized}") (FROM "{sanitized}"))'
         status, data = self.conn.search(None, criteria)
         if status != "OK" or not data[0]:
             return []
 
+        # Cap results to avoid fetching thousands of headers at once
         msg_nums = data[0].split()[-50:]
         if not msg_nums:
             return []
@@ -184,6 +200,8 @@ class IMAPClient:
         return True
 
     def move_email(self, uid: str, dest_folder: str, src_folder: str = "INBOX") -> bool:
+        # IMAP has no native MOVE before RFC 6851 (MOVE extension), so we
+        # emulate it with COPY + flag \Deleted + EXPUNGE for compatibility.
         self.select_folder(src_folder)
         try:
             status, _ = self.conn.uid("copy", uid, dest_folder)

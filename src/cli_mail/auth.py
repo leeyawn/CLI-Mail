@@ -1,4 +1,9 @@
-"""Credential storage using the system keychain via keyring."""
+"""Credential storage using the system keychain via keyring.
+
+keyring is an optional dependency, when unavailable (e.g. headless servers or
+minimal installs), all functions degrade gracefully: stores return False and
+lookups return None, causing the app to fall back to interactive password prompts.
+"""
 
 from __future__ import annotations
 

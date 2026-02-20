@@ -12,6 +12,9 @@ import html2text
 
 from cli_mail.models import Address, Attachment, Email, EmailHeader
 
+# Shared HTML-to-text converter configured for readable terminal output.
+# protect_links keeps URLs intact instead of inlining Markdown-style refs,
+# and unicode_snob prefers Unicode chars over ASCII approximations (e.g. — vs --).
 _h2t = html2text.HTML2Text()
 _h2t.body_width = 80
 _h2t.ignore_images = False
@@ -42,7 +45,12 @@ def _parse_date(msg: EmailMessage) -> datetime:
 
 
 def _extract_body(msg: EmailMessage) -> tuple[str, str]:
-    """Return (plain_text, html_text) from a message."""
+    """Return (plain_text, html_text) from a message.
+
+    Walks multipart messages to find the first text/plain and text/html parts,
+    skipping any parts marked as attachments. If only HTML is present, a
+    plain-text fallback is generated via html2text.
+    """
     plain = ""
     html = ""
 
@@ -89,6 +97,8 @@ def _extract_attachments(msg: EmailMessage) -> list[Attachment]:
         if "attachment" not in disposition and "inline" not in disposition:
             continue
         ct = part.get_content_type()
+        # Inline text/plain and text/html parts are the message body, not
+        # downloadable attachments — skip them unless explicitly attached.
         if ct in ("text/plain", "text/html") and "attachment" not in disposition:
             continue
 

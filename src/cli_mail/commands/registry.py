@@ -1,4 +1,9 @@
-"""Command registry — maps slash commands to handler functions."""
+"""Command registry — maps slash commands to handler functions.
+
+Commands are registered by canonical name (e.g. "inbox") and optionally with
+aliases (e.g. "i", "ls"). Lookup resolves aliases via a separate map so that
+the Command object is only stored once.
+"""
 
 from __future__ import annotations
 
