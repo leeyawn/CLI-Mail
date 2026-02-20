@@ -145,7 +145,7 @@ def print_email(email: Email) -> None:
     console.print()
     console.print(
         Panel(
-            Group(*parts),
+            Group(*parts),  # type: ignore[arg-type]
             title=f"[bold]{title}[/bold]{flags_display}",
             title_align="left",
             border_style="blue",

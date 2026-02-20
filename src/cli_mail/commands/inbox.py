@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 
 def cmd_inbox(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     page = 1
     if args:
         try:

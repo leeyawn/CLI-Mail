@@ -105,9 +105,9 @@ class App:
             ui.print_error("IMAP server is required.")
             return False
 
-        imap_port = _prompt_port("IMAP port", default=defaults.get("imap_port", 993))
+        imap_port = _prompt_port("IMAP port", default=int(defaults.get("imap_port", 993)))
         smtp_host = ui.prompt_input("SMTP server", default=str(defaults.get("smtp_host", imap_host.replace("imap", "smtp", 1))))
-        smtp_port = _prompt_port("SMTP port", default=defaults.get("smtp_port", 587))
+        smtp_port = _prompt_port("SMTP port", default=int(defaults.get("smtp_port", 587)))
 
         password = ui.prompt_password()
         if not password:
@@ -230,6 +230,7 @@ class App:
         ui.print_status_bar(self.ctx)
 
         try:
+            assert self.imap is not None
             total, unread = self.imap.folder_status("INBOX")
             if unread > 0:
                 ui.print_info(f"{unread} unread message{'s' if unread != 1 else ''} in Inbox ({total} total)")

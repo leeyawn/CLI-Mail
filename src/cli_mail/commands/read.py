@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 
 def cmd_read(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     if not args:
         ui.print_error("Usage: /read <number>")
         return

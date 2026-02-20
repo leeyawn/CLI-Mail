@@ -54,18 +54,18 @@ def _extract_body(msg: EmailMessage) -> tuple[str, str]:
                 continue
             if ct == "text/plain" and not plain:
                 payload = part.get_payload(decode=True)
-                if payload:
+                if isinstance(payload, bytes):
                     charset = part.get_content_charset() or "utf-8"
                     plain = payload.decode(charset, errors="replace")
             elif ct == "text/html" and not html:
                 payload = part.get_payload(decode=True)
-                if payload:
+                if isinstance(payload, bytes):
                     charset = part.get_content_charset() or "utf-8"
                     html = payload.decode(charset, errors="replace")
     else:
         ct = msg.get_content_type()
         payload = msg.get_payload(decode=True)
-        if payload:
+        if isinstance(payload, bytes):
             charset = msg.get_content_charset() or "utf-8"
             text = payload.decode(charset, errors="replace")
             if ct == "text/html":
@@ -93,7 +93,8 @@ def _extract_attachments(msg: EmailMessage) -> list[Attachment]:
             continue
 
         filename = part.get_filename() or "unnamed"
-        payload = part.get_payload(decode=True) or b""
+        raw_payload = part.get_payload(decode=True)
+        payload = raw_payload if isinstance(raw_payload, bytes) else b""
         attachments.append(
             Attachment(
                 filename=filename,

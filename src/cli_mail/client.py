@@ -74,7 +74,10 @@ class IMAPClient:
         status, data = self.conn.select(f'"{folder}"')
         if status != "OK":
             raise ValueError(f"Cannot select folder: {folder}")
-        return int(data[0])
+        count = data[0]
+        if count is None:
+            raise ValueError(f"Cannot select folder: {folder}")
+        return int(count)
 
     def fetch_headers(
         self, folder: str = "INBOX", limit: int = 50, offset: int = 0
@@ -95,10 +98,13 @@ class IMAPClient:
         headers: list[EmailHeader] = []
         i = 0
         while i < len(data):
-            if isinstance(data[i], tuple) and len(data[i]) >= 2:
-                meta_line = data[i][0].decode("utf-8", errors="replace")
-                raw_header = data[i][1]
-
+            item = data[i]
+            if isinstance(item, tuple) and len(item) >= 2:
+                meta, raw_header = item[0], item[1]
+                if not isinstance(meta, bytes) or not isinstance(raw_header, bytes):
+                    i += 2
+                    continue
+                meta_line = meta.decode("utf-8", errors="replace")
                 uid = _extract_uid(meta_line)
                 flags = _extract_flags(meta_line)
                 headers.append(parse_header(raw_header, uid, flags))
@@ -144,9 +150,13 @@ class IMAPClient:
         headers: list[EmailHeader] = []
         i = 0
         while i < len(data):
-            if isinstance(data[i], tuple) and len(data[i]) >= 2:
-                meta_line = data[i][0].decode("utf-8", errors="replace")
-                raw_header = data[i][1]
+            item = data[i]
+            if isinstance(item, tuple) and len(item) >= 2:
+                meta, raw_header = item[0], item[1]
+                if not isinstance(meta, bytes) or not isinstance(raw_header, bytes):
+                    i += 2
+                    continue
+                meta_line = meta.decode("utf-8", errors="replace")
                 uid = _extract_uid(meta_line)
                 flags = _extract_flags(meta_line)
                 headers.append(parse_header(raw_header, uid, flags))

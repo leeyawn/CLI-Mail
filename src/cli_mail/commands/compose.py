@@ -28,6 +28,9 @@ def _collect_body() -> str | None:
 
 
 def cmd_compose(app: App, args: list[str]) -> None:
+    if app.ctx.account is None:
+        ui.print_error("No account configured.")
+        return
     to = ui.prompt_input("To")
     if not to:
         ui.print_error("Cancelled — no recipient.")
@@ -65,6 +68,9 @@ def cmd_compose(app: App, args: list[str]) -> None:
 
 
 def cmd_reply(app: App, args: list[str]) -> None:
+    if app.ctx.account is None:
+        ui.print_error("No account configured.")
+        return
     if app.ctx.current_email is None:
         ui.print_error("No email open. Use /read <n> first.")
         return
@@ -88,6 +94,9 @@ def cmd_reply(app: App, args: list[str]) -> None:
 
 
 def cmd_forward(app: App, args: list[str]) -> None:
+    if app.ctx.account is None:
+        ui.print_error("No account configured.")
+        return
     if app.ctx.current_email is None:
         ui.print_error("No email open. Use /read <n> first.")
         return

@@ -31,6 +31,9 @@ def _resolve_uid(app: App, args: list[str]) -> str | None:
 
 
 def cmd_star(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     uid = _resolve_uid(app, args)
     if uid is None:
         return
@@ -51,6 +54,9 @@ def cmd_star(app: App, args: list[str]) -> None:
 
 
 def cmd_delete(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     uid = _resolve_uid(app, args)
     if uid is None:
         return
@@ -68,6 +74,9 @@ def cmd_delete(app: App, args: list[str]) -> None:
 
 
 def cmd_archive(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     uid = _resolve_uid(app, args)
     if uid is None:
         return

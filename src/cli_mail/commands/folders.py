@@ -11,6 +11,9 @@ if TYPE_CHECKING:
 
 
 def cmd_folders(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     with ui.console.status("[info]Loading folders...[/info]", spinner="dots"):
         folders = app.imap.list_folders()
 
@@ -22,6 +25,9 @@ def cmd_folders(app: App, args: list[str]) -> None:
 
 
 def cmd_switch(app: App, args: list[str]) -> None:
+    if app.imap is None:
+        ui.print_error("Not connected.")
+        return
     if not args:
         ui.print_error("Usage: /switch <folder>")
         return
