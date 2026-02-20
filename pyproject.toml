@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cli-mail"
+version = "0.1.0"
+description = "A terminal email client with a Claude Code-style interactive interface"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Leon Letournel"}]
+requires-python = ">=3.11"
+keywords = ["email", "cli", "terminal", "imap", "smtp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Communications :: Email",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "html2text>=2024.2",
+    "keyring>=25.0",
+]
+
+[project.scripts]
+cli-mail = "cli_mail.app:main"
+
+[project.urls]
+Repository = "https://github.com/leonletournel/cli-mail"
+Issues = "https://github.com/leonletournel/cli-mail/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "mypy>=1.0", "isort>=5.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
