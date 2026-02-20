@@ -6,14 +6,8 @@ from pathlib import Path
 import pytest
 
 from cli_mail import config as config_module
-from cli_mail.config import (
-    get_account,
-    guess_provider,
-    list_accounts,
-    load_config,
-    save_account,
-    save_config,
-)
+from cli_mail.config import (get_account, guess_provider, list_accounts,
+                             load_config, save_account, save_config)
 from cli_mail.models import AccountConfig
 
 

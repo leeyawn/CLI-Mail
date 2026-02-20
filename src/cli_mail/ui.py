@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+
 from rich.console import Console, Group
 from rich.markdown import Markdown
 from rich.panel import Panel

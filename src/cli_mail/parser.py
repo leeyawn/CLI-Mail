@@ -12,7 +12,6 @@ import html2text
 
 from cli_mail.models import Address, Attachment, Email, EmailHeader
 
-
 _h2t = html2text.HTML2Text()
 _h2t.body_width = 80
 _h2t.ignore_images = False

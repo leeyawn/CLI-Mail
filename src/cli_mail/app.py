@@ -6,8 +6,8 @@ import sys
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.history import FileHistory
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.history import FileHistory
 
 from cli_mail import ui
 from cli_mail.auth import get_password, store_password
@@ -20,13 +20,8 @@ from cli_mail.commands.inbox import cmd_inbox, cmd_refresh
 from cli_mail.commands.read import cmd_read, cmd_save_attachment
 from cli_mail.commands.registry import CommandRegistry
 from cli_mail.commands.search import cmd_search
-from cli_mail.config import (
-    CONFIG_DIR,
-    get_account,
-    guess_provider,
-    list_accounts,
-    save_account,
-)
+from cli_mail.config import (CONFIG_DIR, get_account, guess_provider,
+                             list_accounts, save_account)
 from cli_mail.models import AccountConfig, AppContext
 
 

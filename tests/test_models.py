@@ -2,15 +2,8 @@
 
 from datetime import datetime, timezone
 
-from cli_mail.models import (
-    AccountConfig,
-    Address,
-    AppContext,
-    Attachment,
-    Email,
-    EmailHeader,
-    Folder,
-)
+from cli_mail.models import (AccountConfig, Address, AppContext, Attachment,
+                             Email, EmailHeader, Folder)
 
 
 class TestAddress:

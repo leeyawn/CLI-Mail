@@ -1,9 +1,9 @@
 """Tests for email parsing."""
 
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 
 from cli_mail.parser import html_to_text, parse_email, parse_header
 
