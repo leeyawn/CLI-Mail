@@ -13,7 +13,7 @@ from rich.text import Text
 from rich.theme import Theme
 
 from cli_mail import __version__
-from cli_mail.models import AppContext, Email, EmailHeader, Folder
+from cli_mail.models import AccountConfig, AppContext, Email, EmailHeader, Folder
 
 THEME = Theme(
     {
@@ -57,6 +57,33 @@ def print_status_bar(ctx: AppContext) -> None:
     else:
         parts.append("[error]○[/error] disconnected")
     console.print("  ".join(parts))
+    console.print()
+
+
+def print_accounts(
+    accounts: list[AccountConfig],
+    active_name: str = "",
+    default_name: str = "",
+) -> None:
+    table = Table(
+        show_header=True,
+        header_style="bold",
+        border_style="dim",
+        padding=(0, 1),
+        expand=True,
+    )
+    table.add_column("#", style="dim", width=4, justify="right")
+    table.add_column("", width=2)
+    table.add_column("Name", min_width=12, no_wrap=True)
+    table.add_column("Email", min_width=20, ratio=1)
+    table.add_column("Default", width=8, justify="center")
+
+    for i, acct in enumerate(accounts, start=1):
+        active_marker = "[success]●[/success]" if acct.name == active_name else " "
+        default_marker = "[flagged]★[/flagged]" if acct.name == default_name else ""
+        table.add_row(str(i), active_marker, acct.name, acct.email, default_marker)
+
+    console.print(table)
     console.print()
 
 
@@ -206,8 +233,12 @@ def print_help() -> None:
         ("/delete [n]", "Delete email #n or current"),
         ("/archive [n]", "Archive email #n or current"),
         ("/account", "Show current account info"),
+        ("/account list", "List all configured accounts"),
+        ("/account switch [name]", "Switch to another account"),
+        ("/account add", "Add a new email account"),
+        ("/account default [name]", "Show or set the default account"),
+        ("/account logout", "Log out and remove account"),
         ("/refresh", "Refresh the inbox"),
-        ("/logout", "Log out and remove account"),
         ("/help", "Show this help message"),
         ("/quit", "Exit CLI Mail"),
     ]

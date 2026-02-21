@@ -22,6 +22,7 @@ class Command:
     handler: CommandHandler
     aliases: list[str]
     description: str
+    subcommands: list[str]
 
 
 class CommandRegistry:
@@ -35,8 +36,9 @@ class CommandRegistry:
         handler: CommandHandler,
         aliases: list[str] | None = None,
         description: str = "",
+        subcommands: list[str] | None = None,
     ) -> None:
-        cmd = Command(name=name, handler=handler, aliases=aliases or [], description=description)
+        cmd = Command(name=name, handler=handler, aliases=aliases or [], description=description, subcommands=subcommands or [])
         self._commands[name] = cmd
         for alias in cmd.aliases:
             self._alias_map[alias] = name
@@ -53,6 +55,9 @@ class CommandRegistry:
     def command_names(self) -> list[str]:
         names = list(self._commands.keys())
         names.extend(self._alias_map.keys())
+        for cmd in self._commands.values():
+            for sub in cmd.subcommands:
+                names.append(f"{cmd.name} {sub}")
         return sorted(names)
 
     @property

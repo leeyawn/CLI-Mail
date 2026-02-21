@@ -69,10 +69,39 @@ def get_account(name: str | None = None) -> AccountConfig | None:
     )
 
 
+def _unique_name(desired: str, existing: dict, email: str) -> str:
+    """Return a name that doesn't collide with existing accounts.
+
+    If ``desired`` is already taken by a *different* email, try
+    ``user@domain`` (without TLD) then ``user@full.domain`` before
+    falling back to numeric suffixes.
+    """
+    if desired not in existing or existing[desired].get("email") == email:
+        return desired
+
+    domain = email.split("@")[1] if "@" in email else ""
+    short_domain = domain.split(".")[0] if domain else ""
+
+    for candidate in (
+        f"{desired}@{short_domain}" if short_domain else None,
+        f"{desired}@{domain}" if domain else None,
+    ):
+        if candidate and candidate not in existing:
+            return candidate
+
+    n = 2
+    while f"{desired}{n}" in existing:
+        n += 1
+    return f"{desired}{n}"
+
+
 def save_account(account: AccountConfig) -> None:
     config = load_config()
     if "accounts" not in config:
         config["accounts"] = {}
+
+    account.name = _unique_name(account.name, config["accounts"], account.email)
+
     config["accounts"][account.name] = {
         "email": account.email,
         "imap_host": account.imap_host,
@@ -99,6 +128,22 @@ def delete_account(name: str) -> None:
 def list_accounts() -> list[str]:
     config = load_config()
     return list(config.get("accounts", {}).keys())
+
+
+def get_default_account_name() -> str:
+    config = load_config()
+    accounts = config.get("accounts", {})
+    return config.get("default_account", next(iter(accounts), ""))
+
+
+def set_default_account(name: str) -> bool:
+    """Set the default account. Returns False if the account doesn't exist."""
+    config = load_config()
+    if name not in config.get("accounts", {}):
+        return False
+    config["default_account"] = name
+    save_config(config)
+    return True
 
 
 # Well-known provider IMAP/SMTP settings keyed by email domain.

@@ -23,6 +23,8 @@ def cmd_inbox(app: App, args: list[str]) -> None:
             ui.print_error(f"Invalid page number: {args[0]}")
             return
 
+    app.ctx.current_email = None
+
     with ui.console.status("[info]Fetching inbox...[/info]", spinner="dots"):
         offset = (page - 1) * app.ctx.page_size
         headers = app.imap.fetch_headers(

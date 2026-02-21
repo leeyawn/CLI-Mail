@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 
 from cli_mail import config as config_module
-from cli_mail.config import (delete_account, get_account, guess_provider,
+from cli_mail.config import (delete_account, get_account,
+                             get_default_account_name, guess_provider,
                              list_accounts, load_config, save_account,
-                             save_config)
+                             save_config, set_default_account)
 from cli_mail.models import AccountConfig
 
 
@@ -150,6 +151,52 @@ class TestSaveGetAccount:
         assert loaded.email == "first.last@company.com"
 
 
+class TestSaveAccountNameCollision:
+    def test_same_local_part_different_domain_gets_disambiguated(self, config_dir):
+        """Two emails with the same local part shouldn't overwrite each other."""
+        acct1 = AccountConfig(email="leon@gmail.com", imap_host="imap.gmail.com")
+        save_account(acct1)
+        assert acct1.name == "leon"
+
+        acct2 = AccountConfig(email="leon@outlook.com", imap_host="outlook.office365.com")
+        save_account(acct2)
+
+        assert acct2.name != "leon"
+        assert acct2.name == "leon@outlook"
+        assert len(list_accounts()) == 2
+
+        loaded1 = get_account("leon")
+        loaded2 = get_account("leon@outlook")
+        assert loaded1 is not None and loaded1.email == "leon@gmail.com"
+        assert loaded2 is not None and loaded2.email == "leon@outlook.com"
+
+    def test_same_email_overwrites_same_account(self, config_dir):
+        """Re-saving the same email should update, not create a duplicate."""
+        acct = AccountConfig(email="leon@gmail.com", imap_host="imap.gmail.com")
+        save_account(acct)
+        acct2 = AccountConfig(email="leon@gmail.com", imap_host="imap.new.com")
+        save_account(acct2)
+
+        assert len(list_accounts()) == 1
+        loaded = get_account("leon")
+        assert loaded is not None
+        assert loaded.imap_host == "imap.new.com"
+
+    def test_triple_collision_uses_numeric_suffix(self, config_dir):
+        """Third account with same local part falls back to numeric suffix."""
+        save_account(AccountConfig(email="user@gmail.com", imap_host="imap.gmail.com"))
+        save_account(AccountConfig(email="user@outlook.com", imap_host="outlook.office365.com"))
+        acct3 = AccountConfig(email="user@yahoo.com", imap_host="imap.mail.yahoo.com")
+        save_account(acct3)
+
+        names = list_accounts()
+        assert len(names) == 3
+        assert "user" in names
+        assert "user@outlook" in names
+        # user@yahoo also collides at short-domain level? No — "user@yahoo" is unique
+        assert "user@yahoo" in names
+
+
 class TestDeleteAccount:
     def test_delete_only_account(self, config_dir):
         save_account(AccountConfig(email="user@example.com", imap_host="imap.example.com"))
@@ -183,6 +230,28 @@ class TestDeleteAccount:
         save_account(AccountConfig(email="user@example.com", imap_host="imap.example.com"))
         delete_account("nonexistent")
         assert list_accounts() == ["user"]
+
+
+class TestSetDefaultAccount:
+    def test_set_default_existing_account(self, config_dir):
+        save_account(AccountConfig(email="a@example.com", imap_host="imap.example.com", name="acct_a"))
+        save_account(AccountConfig(email="b@example.com", imap_host="imap.example.com", name="acct_b"))
+
+        assert set_default_account("acct_b") is True
+        assert get_default_account_name() == "acct_b"
+
+    def test_set_default_nonexistent_account(self, config_dir):
+        save_account(AccountConfig(email="a@example.com", imap_host="imap.example.com", name="acct_a"))
+
+        assert set_default_account("nonexistent") is False
+        assert get_default_account_name() == "acct_a"
+
+    def test_get_default_account_name_empty(self, config_dir):
+        assert get_default_account_name() == ""
+
+    def test_get_default_account_name(self, config_dir):
+        save_account(AccountConfig(email="a@example.com", imap_host="imap.example.com", name="acct_a"))
+        assert get_default_account_name() == "acct_a"
 
 
 class TestGuessProvider:

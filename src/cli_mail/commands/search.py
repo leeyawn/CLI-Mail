@@ -19,6 +19,7 @@ def cmd_search(app: App, args: list[str]) -> None:
         return
 
     query = " ".join(args)
+    app.ctx.current_email = None
 
     with ui.console.status(f'[info]Searching for "{query}"...[/info]', spinner="dots"):
         results = app.imap.search(query, folder=app.ctx.current_folder)

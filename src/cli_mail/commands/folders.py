@@ -14,6 +14,9 @@ def cmd_folders(app: App, args: list[str]) -> None:
     if app.imap is None:
         ui.print_error("Not connected.")
         return
+
+    app.ctx.current_email = None
+
     with ui.console.status("[info]Loading folders...[/info]", spinner="dots"):
         folders = app.imap.list_folders()
 

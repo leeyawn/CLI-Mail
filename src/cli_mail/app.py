@@ -12,7 +12,7 @@ from prompt_toolkit.history import FileHistory
 from cli_mail import ui
 from cli_mail.auth import get_password, store_password
 from cli_mail.client import IMAPClient
-from cli_mail.commands.account import cmd_account, cmd_logout
+from cli_mail.commands.account import cmd_account_dispatch
 from cli_mail.commands.actions import cmd_archive, cmd_delete, cmd_star
 from cli_mail.commands.compose import cmd_compose, cmd_forward, cmd_reply
 from cli_mail.commands.folders import cmd_folders, cmd_switch
@@ -20,8 +20,8 @@ from cli_mail.commands.inbox import cmd_inbox, cmd_refresh
 from cli_mail.commands.read import cmd_read, cmd_save_attachment
 from cli_mail.commands.registry import CommandRegistry
 from cli_mail.commands.search import cmd_search
-from cli_mail.config import (CONFIG_DIR, get_account, guess_provider,
-                             list_accounts, save_account)
+from cli_mail.config import (CONFIG_DIR, get_account, get_default_account_name,
+                             guess_provider, list_accounts, save_account)
 from cli_mail.models import AccountConfig, AppContext
 
 
@@ -41,7 +41,7 @@ class App:
     def __init__(self) -> None:
         self.ctx = AppContext()
         self.imap: IMAPClient | None = None
-        self.password: str = ""
+        self._passwords: dict[str, str] = {}
         self.registry = CommandRegistry()
         self._register_commands()
 
@@ -72,11 +72,19 @@ class App:
         r.register("delete", cmd_delete, aliases=["del", "rm"], description="Delete email")
         r.register("archive", cmd_archive, aliases=["ar"], description="Archive email")
         r.register("save", cmd_save_attachment, description="Save attachment")
-        r.register("account", cmd_account, aliases=["acc", "whoami"], description="Account info")
-        r.register("logout", cmd_logout, aliases=["signout"], description="Log out and remove account")
+        r.register("account", cmd_account_dispatch, aliases=["acc", "whoami"],
+                   description="Account management (list, switch, add, default, logout)",
+                   subcommands=["list", "switch", "add", "default", "logout"])
         r.register("refresh", cmd_refresh, aliases=["ref"], description="Refresh inbox")
         r.register("help", lambda app, args: app._cmd_help(args), aliases=["h", "?"], description="Show help")
         r.register("quit", lambda app, args: app._cmd_quit(args), aliases=["q", "exit"], description="Exit")
+
+    @property
+    def password(self) -> str:
+        """Password for the active account (used by compose commands)."""
+        if self.ctx.account:
+            return self._passwords.get(self.ctx.account.name, "")
+        return ""
 
     def _cmd_help(self, args: list[str]) -> None:
         ui.print_help()
@@ -93,21 +101,23 @@ class App:
             self.imap.disconnect()
             self.ctx.connected = False
 
-    def _setup_account(self) -> bool:
-        """Interactive first-run account setup. Returns True on success."""
-        ui.console.print("  [bold]No accounts configured. Let's set one up.[/bold]")
-        ui.console.print()
+    def setup_new_account(self) -> AccountConfig | None:
+        """Interactive account setup. Returns the new AccountConfig or None on failure.
 
+        Prompts for credentials, tests the connection, and persists both the
+        config and the password. Does NOT modify self.ctx — callers decide
+        whether to activate the account.
+        """
         email_addr = ui.prompt_input("Email address")
         if not email_addr or "@" not in email_addr:
             ui.print_error("Invalid email address.")
-            return False
+            return None
 
         defaults = guess_provider(email_addr)
         imap_host = ui.prompt_input("IMAP server", default=str(defaults.get("imap_host", "")))
         if not imap_host:
             ui.print_error("IMAP server is required.")
-            return False
+            return None
 
         imap_port = _prompt_port("IMAP port", default=int(defaults.get("imap_port", 993)))
         smtp_host = ui.prompt_input("SMTP server", default=str(defaults.get("smtp_host", imap_host.replace("imap", "smtp", 1))))
@@ -116,7 +126,7 @@ class App:
         password = ui.prompt_password()
         if not password:
             ui.print_error("Password is required.")
-            return False
+            return None
 
         account = AccountConfig(
             email=email_addr,
@@ -134,17 +144,28 @@ class App:
                 test_client.disconnect()
             except Exception as e:
                 ui.print_error(f"Connection failed: {e}")
-                return False
+                return None
 
         ui.print_success("Connected successfully!")
 
         save_account(account)
         store_password(account.name, password)
+        self._passwords[account.name] = password
         ui.print_success("Account saved.")
         ui.console.print()
 
+        return account
+
+    def _setup_account(self) -> bool:
+        """Interactive first-run account setup. Returns True on success."""
+        ui.console.print("  [bold]No accounts configured. Let's set one up.[/bold]")
+        ui.console.print()
+
+        account = self.setup_new_account()
+        if account is None:
+            return False
+
         self.ctx.account = account
-        self.password = password
         return True
 
     def _connect(self) -> bool:
@@ -159,7 +180,7 @@ class App:
         if account is None:
             return False
 
-        password = self.password
+        password = self._passwords.get(account.name, "")
         if not password:
             password = get_password(account.name) or ""
         if not password:
@@ -168,7 +189,7 @@ class App:
             ui.print_error("Password required.")
             return False
 
-        self.password = password
+        self._passwords[account.name] = password
 
         self._disconnect()
         with ui.console.status("[info]Connecting...[/info]", spinner="dots"):
@@ -183,14 +204,49 @@ class App:
 
         return True
 
+    def switch_account(self, name: str) -> bool:
+        """Switch to a different account by name. Returns True on success."""
+        account = get_account(name)
+        if account is None:
+            ui.print_error(f'Account "{name}" not found.')
+            return False
+
+        self._disconnect()
+
+        self.ctx.account = account
+        self.ctx.current_folder = "INBOX"
+        self.ctx.current_page = 1
+        self.ctx.current_email = None
+        self.ctx.inbox_cache = []
+
+        if not self._connect():
+            return False
+
+        ui.print_success(f"Switched to {account.name} ({account.email})")
+        ui.print_status_bar(self.ctx)
+
+        try:
+            assert self.imap is not None
+            total, unread = self.imap.folder_status("INBOX")
+            if unread > 0:
+                ui.print_info(f"{unread} unread message{'s' if unread != 1 else ''} in Inbox ({total} total)")
+            else:
+                ui.print_info(f"{total} messages in Inbox")
+        except Exception:
+            ui.print_info("Connected. Type /inbox to list messages.")
+        ui.console.print()
+        return True
+
     def _get_prompt(self) -> HTML:
+        acct = self.ctx.account.name if self.ctx.account else "?"
         folder = self.ctx.current_folder
+        prefix = f"<b><style fg='ansibrightblue'>{acct}</style></b>:<b><style fg='cyan'>{folder}</style></b>"
         if self.ctx.current_email:
             subject = self.ctx.current_email.subject
             if len(subject) > 30:
                 subject = subject[:27] + "..."
-            return HTML(f"<b><style fg='cyan'>{folder}</style></b> <style fg='ansibrightblack'>({subject})</style> <b>&gt;</b> ")
-        return HTML(f"<b><style fg='cyan'>{folder}</style></b> <b>&gt;</b> ")
+            return HTML(f"{prefix} <style fg='ansibrightblack'>({subject})</style> <b>&gt;</b> ")
+        return HTML(f"{prefix} <b>&gt;</b> ")
 
     def _dispatch(self, user_input: str) -> None:
         """Parse and dispatch a user command."""
@@ -222,6 +278,33 @@ class App:
             else:
                 self._dispatch(f"/search {user_input}")
 
+    def _pick_account(self, accounts: list[str]) -> AccountConfig | None:
+        """Show a numbered account picker and return the chosen AccountConfig."""
+        default_name = get_default_account_name()
+        default_idx = 1
+
+        loaded: list[AccountConfig] = []
+        for i, name in enumerate(accounts, start=1):
+            acct = get_account(name)
+            if acct is not None:
+                loaded.append(acct)
+                if name == default_name:
+                    default_idx = i
+
+        ui.print_info(f"{len(loaded)} accounts configured. Connect to:")
+        ui.console.print()
+        ui.print_accounts(loaded, default_name=default_name)
+
+        raw = ui.prompt_input("Select account", default=str(default_idx))
+        try:
+            idx = int(raw) - 1
+            if 0 <= idx < len(loaded):
+                return loaded[idx]
+        except ValueError:
+            pass
+        ui.print_error("Invalid selection.")
+        return None
+
     def run(self) -> None:
         """Main entry point — setup, connect, REPL."""
         ui.print_banner()
@@ -230,13 +313,18 @@ class App:
         if not accounts:
             if not self._setup_account():
                 return
-        else:
+        elif len(accounts) == 1:
             self.ctx.account = get_account()
             if self.ctx.account is None:
                 ui.print_error("Could not load account from config. Re-running setup.")
                 ui.console.print()
                 if not self._setup_account():
                     return
+        else:
+            picked = self._pick_account(accounts)
+            if picked is None:
+                return
+            self.ctx.account = picked
 
         if not self._connect():
             return
