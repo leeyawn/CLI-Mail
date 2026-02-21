@@ -13,7 +13,8 @@ from rich.text import Text
 from rich.theme import Theme
 
 from cli_mail import __version__
-from cli_mail.models import AccountConfig, AppContext, Email, EmailHeader, Folder
+from cli_mail.models import (AccountConfig, AppContext, Email, EmailHeader,
+                             Folder)
 
 THEME = Theme(
     {

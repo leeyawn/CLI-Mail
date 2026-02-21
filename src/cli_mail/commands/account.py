@@ -10,13 +10,9 @@ from rich.table import Table
 
 from cli_mail import ui
 from cli_mail.auth import delete_password
-from cli_mail.config import (
-    delete_account,
-    get_account,
-    get_default_account_name,
-    list_accounts,
-    set_default_account,
-)
+from cli_mail.config import (delete_account, get_account,
+                             get_default_account_name, list_accounts,
+                             set_default_account)
 from cli_mail.models import AccountConfig
 
 if TYPE_CHECKING:

@@ -4,13 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from cli_mail.commands.account import (
-    cmd_account_add,
-    cmd_account_default,
-    cmd_account_dispatch,
-    cmd_account_list,
-    cmd_account_switch,
-)
+from cli_mail.commands.account import (cmd_account_add, cmd_account_default,
+                                       cmd_account_dispatch, cmd_account_list,
+                                       cmd_account_switch)
 from cli_mail.models import AccountConfig, AppContext
 
 
