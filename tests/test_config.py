@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 
 from cli_mail import config as config_module
-from cli_mail.config import (get_account, guess_provider, list_accounts,
-                             load_config, save_account, save_config)
+from cli_mail.config import (delete_account, get_account, guess_provider,
+                             list_accounts, load_config, save_account,
+                             save_config)
 from cli_mail.models import AccountConfig
 
 
@@ -147,6 +148,41 @@ class TestSaveGetAccount:
         loaded = get_account(acct.name)
         assert loaded is not None
         assert loaded.email == "first.last@company.com"
+
+
+class TestDeleteAccount:
+    def test_delete_only_account(self, config_dir):
+        save_account(AccountConfig(email="user@example.com", imap_host="imap.example.com"))
+        delete_account("user")
+        assert list_accounts() == []
+        assert get_account() is None
+
+    def test_delete_default_promotes_next(self, config_dir):
+        save_account(AccountConfig(email="a@example.com", imap_host="imap.example.com", name="acct_a"))
+        save_account(AccountConfig(email="b@example.com", imap_host="imap.example.com", name="acct_b"))
+        config = load_config()
+        config["default_account"] = "acct_a"
+        save_config(config)
+
+        delete_account("acct_a")
+        config = load_config()
+        assert "acct_a" not in config["accounts"]
+        assert config["default_account"] == "acct_b"
+
+    def test_delete_non_default_keeps_default(self, config_dir):
+        save_account(AccountConfig(email="a@example.com", imap_host="imap.example.com", name="acct_a"))
+        save_account(AccountConfig(email="b@example.com", imap_host="imap.example.com", name="acct_b"))
+
+        delete_account("acct_b")
+        config = load_config()
+        assert config["default_account"] == "acct_a"
+        assert "acct_b" not in config["accounts"]
+        assert "acct_a" in config["accounts"]
+
+    def test_delete_nonexistent_is_noop(self, config_dir):
+        save_account(AccountConfig(email="user@example.com", imap_host="imap.example.com"))
+        delete_account("nonexistent")
+        assert list_accounts() == ["user"]
 
 
 class TestGuessProvider:

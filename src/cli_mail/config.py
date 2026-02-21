@@ -86,6 +86,16 @@ def save_account(account: AccountConfig) -> None:
     save_config(config)
 
 
+def delete_account(name: str) -> None:
+    config = load_config()
+    accounts = config.get("accounts", {})
+    accounts.pop(name, None)
+    if config.get("default_account") == name:
+        config["default_account"] = next(iter(accounts), "")
+    config["accounts"] = accounts
+    save_config(config)
+
+
 def list_accounts() -> list[str]:
     config = load_config()
     return list(config.get("accounts", {}).keys())

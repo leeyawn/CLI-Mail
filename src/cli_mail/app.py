@@ -12,7 +12,7 @@ from prompt_toolkit.history import FileHistory
 from cli_mail import ui
 from cli_mail.auth import get_password, store_password
 from cli_mail.client import IMAPClient
-from cli_mail.commands.account import cmd_account
+from cli_mail.commands.account import cmd_account, cmd_logout
 from cli_mail.commands.actions import cmd_archive, cmd_delete, cmd_star
 from cli_mail.commands.compose import cmd_compose, cmd_forward, cmd_reply
 from cli_mail.commands.folders import cmd_folders, cmd_switch
@@ -73,6 +73,7 @@ class App:
         r.register("archive", cmd_archive, aliases=["ar"], description="Archive email")
         r.register("save", cmd_save_attachment, description="Save attachment")
         r.register("account", cmd_account, aliases=["acc", "whoami"], description="Account info")
+        r.register("logout", cmd_logout, aliases=["signout"], description="Log out and remove account")
         r.register("refresh", cmd_refresh, aliases=["ref"], description="Refresh inbox")
         r.register("help", lambda app, args: app._cmd_help(args), aliases=["h", "?"], description="Show help")
         r.register("quit", lambda app, args: app._cmd_quit(args), aliases=["q", "exit"], description="Exit")

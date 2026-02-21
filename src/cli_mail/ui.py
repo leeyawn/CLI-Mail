@@ -207,6 +207,7 @@ def print_help() -> None:
         ("/archive [n]", "Archive email #n or current"),
         ("/account", "Show current account info"),
         ("/refresh", "Refresh the inbox"),
+        ("/logout", "Log out and remove account"),
         ("/help", "Show this help message"),
         ("/quit", "Exit CLI Mail"),
     ]

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from rich.panel import Panel
 from rich.table import Table
 
 from cli_mail import ui
+from cli_mail.auth import delete_password
+from cli_mail.config import delete_account
 
 if TYPE_CHECKING:
     from cli_mail.app import App
@@ -33,3 +36,19 @@ def cmd_account(app: App, args: list[str]) -> None:
 
     ui.console.print(Panel(table, title="[bold]Account[/bold]", title_align="left", border_style="cyan"))
     ui.console.print()
+
+
+def cmd_logout(app: App, args: list[str]) -> None:
+    if app.ctx.account is None:
+        ui.print_warning("No account to log out of.")
+        return
+
+    if not ui.prompt_confirm(f"Log out of {app.ctx.account.email}?"):
+        return
+
+    app._disconnect()
+    delete_password(app.ctx.account.name)
+    delete_account(app.ctx.account.name)
+    ui.print_success("Logged out successfully.")
+    ui.console.print()
+    sys.exit(0)
